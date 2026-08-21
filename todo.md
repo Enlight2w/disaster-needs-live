@@ -10,4 +10,11 @@
 - [x] Verify the desktop and mobile interface visually and resolve console or build errors.
 - [x] Run a production build and document the non-blocking map-tile fallback behavior.
 - [x] Re-check runtime logs after the fallback change and confirm no application errors remain.
-- [ ] Save a completion checkpoint and provide the project version for review.
+- [x] Save a completion checkpoint and provide the project version for review.
+- [x] Define clear request-status semantics and reflect active progress on need-matching cards.
+- [x] Add category filter controls for medical, shelter, food, and other responder-relevant request types.
+- [x] Add AI-assisted natural-language categorization to the need-intake modal with a visible suggested category.
+- [x] Add and run Vitest coverage for status transitions, category filters, and intake categorization.
+- [x] Add a clear empty state when a selected matching category has no open requests.
+- [x] Test the server-side AI categorization response and fallback contract without calling external services.
+- [ ] Validate the enhanced matching experience on desktop and mobile, save a checkpoint, and deliver the updated project version.

@@ -4,12 +4,9 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { NeedIntakeForm } from "@/components/NeedIntakeForm";
+import { NeedMatchingPanel } from "@/components/NeedMatchingPanel";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
@@ -23,7 +20,6 @@ import {
   MapPin,
   Navigation,
   Radio,
-  Search,
   ShieldCheck,
   Sparkles,
   Truck,
@@ -52,12 +48,6 @@ const needStyles: Record<IncidentCategory, { icon: typeof Droplets; className: s
   Language: { icon: Languages, className: "bg-cyan-300/10 text-cyan-100 ring-cyan-200/15" },
 };
 
-const matchCards: Array<{ label: string; detail: string; icon: typeof Droplets }> = [
-  { label: "Exact need", detail: "Safe water kits", icon: Droplets },
-  { label: "Local constraint", detail: "2 boat routes only", icon: Truck },
-  { label: "Response offer", detail: "Driver + supplies", icon: HeartHandshake },
-];
-
 function NeedChip({ need }: { need: IncidentCategory }) {
   const { icon: Icon, className } = needStyles[need];
   return (
@@ -74,7 +64,6 @@ export default function Home() {
   const [filter, setFilter] = useState<IncidentFilter>("all");
   const [reportOpen, setReportOpen] = useState(false);
   const [amberAlert, setAmberAlert] = useState(false);
-  const [report, setReport] = useState({ location: "", need: "", details: "" });
 
   const visibleIncidents = useMemo(() => filterIncidents(CRISIS_INCIDENTS, filter), [filter]);
   const activeIncident = CRISIS_INCIDENTS.find(incident => incident.id === activeId) ?? CRISIS_INCIDENTS[0];
@@ -128,19 +117,6 @@ export default function Home() {
     toast.warning("Amber alert activated", {
       description: "The selected incident is now surfaced to the local response queue in this prototype.",
     });
-  };
-
-  const submitReport = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!report.location.trim() || !report.need.trim()) {
-      toast.error("Add a location and a specific need before sending.");
-      return;
-    }
-    toast.success("Need submitted for verification", {
-      description: "This prototype stores nothing externally; a live deployment would route this to a trained verifier.",
-    });
-    setReport({ location: "", need: "", details: "" });
-    setReportOpen(false);
   };
 
   return (
@@ -353,27 +329,7 @@ export default function Home() {
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1.22fr_0.78fr]">
-          <div className="rounded-[28px] border border-white/10 bg-[#0b1928] p-6 sm:p-7">
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
-              <div>
-                <p className="font-mono text-[10px] font-semibold tracking-[0.12em] text-[#f8bd61]">MATCH THE NEED</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-[-0.055em] text-white">Help that is specific enough to move.</h2>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">A local post should name the exact item, destination, language, and transport constraint—so responders can coordinate without a chain of guesswork.</p>
-              </div>
-              <Button onClick={() => setReportOpen(true)} variant="outline" className="h-10 shrink-0 rounded-xl border-white/15 bg-white/5 text-xs font-semibold text-white hover:bg-white/10 hover:text-white">
-                Post a need <ArrowUpRight className="ml-2 size-3.5" />
-              </Button>
-            </div>
-            <div className="mt-6 grid gap-2.5 sm:grid-cols-3">
-              {matchCards.map(({ label, detail, icon: ItemIcon }) => (
-                  <div key={label} className="rounded-2xl border border-white/[0.08] bg-[#07131f]/75 p-4">
-                    <ItemIcon className="size-4 text-[#7bf1c9]" />
-                    <p className="mt-5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-                    <p className="mt-1.5 text-sm font-semibold tracking-[-0.02em] text-white">{detail}</p>
-                  </div>
-              ))}
-            </div>
-          </div>
+          <NeedMatchingPanel onPostNeed={() => setReportOpen(true)} />
 
           <div className={cn("rounded-[28px] border p-6 sm:p-7", amberAlert ? "border-[#f8bd61]/40 bg-[#2a1d0f]" : "border-white/10 bg-[#101b29]") }>
             <div className="flex items-center justify-between gap-4">
@@ -426,25 +382,7 @@ export default function Home() {
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="border-white/10 bg-[#0d1b2a] text-white sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl tracking-[-0.05em]">Report a precise need</DialogTitle>
-            <DialogDescription className="leading-5 text-slate-400">This prototype demonstrates the intake experience only. Do not submit life-critical requests here.</DialogDescription>
-          </DialogHeader>
-          <form className="mt-3 space-y-4" onSubmit={submitReport}>
-            <label className="block space-y-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Location or safe landmark</span>
-              <Input value={report.location} onChange={event => setReport(current => ({ ...current, location: event.target.value }))} placeholder="e.g. East community shelter, block 4" className="h-11 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-600" />
-            </label>
-            <label className="block space-y-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Exact need</span>
-              <Input value={report.need} onChange={event => setReport(current => ({ ...current, need: event.target.value }))} placeholder="e.g. Insulin cooler with ice packs" className="h-11 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-600" />
-            </label>
-            <label className="block space-y-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">Access notes (optional)</span>
-              <Textarea value={report.details} onChange={event => setReport(current => ({ ...current, details: event.target.value }))} placeholder="Safe contact route, transport constraint, preferred language…" className="min-h-24 border-white/10 bg-white/[0.04] text-white placeholder:text-slate-600" />
-            </label>
-            <Button type="submit" className="h-11 w-full rounded-xl bg-[#7bf1c9] text-xs font-bold text-[#07111e] hover:bg-[#a5f8db]">Submit for verification <ArrowUpRight className="ml-2 size-4" /></Button>
-          </form>
+          <NeedIntakeForm onComplete={() => setReportOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>

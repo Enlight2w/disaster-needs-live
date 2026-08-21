@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { CRISIS_INCIDENTS, filterIncidents, formatCoordinates, stageAmberAlert } from "../client/src/lib/crisis";
+import {
+  CRISIS_INCIDENTS,
+  RESPONSE_NEEDS,
+  filterIncidents,
+  filterResponseNeeds,
+  formatCoordinates,
+  getHeuristicCategory,
+  nextNeedStatus,
+  stageAmberAlert,
+} from "../client/src/lib/crisis";
 
 describe("crisis-board logic", () => {
   it("keeps every incident in the all-signals view", () => {
@@ -19,5 +28,21 @@ describe("crisis-board logic", () => {
   it("keeps an amber alert staged after repeat activation attempts", () => {
     expect(stageAmberAlert(false)).toBe(true);
     expect(stageAmberAlert(true)).toBe(true);
+  });
+
+  it("filters matching requests by a responder category", () => {
+    const medicalRequests = filterResponseNeeds(RESPONSE_NEEDS, "Medical");
+    expect(medicalRequests).toHaveLength(1);
+    expect(medicalRequests[0]?.title).toBe("Cold-chain insulin");
+  });
+
+  it("advances a request from posted to in-progress to fulfilled", () => {
+    expect(nextNeedStatus("posted")).toBe("in_progress");
+    expect(nextNeedStatus("in_progress")).toBe("fulfilled");
+    expect(nextNeedStatus("fulfilled")).toBe("fulfilled");
+  });
+
+  it("uses medical keywords as a safe fallback when AI is unavailable", () => {
+    expect(getHeuristicCategory("Insulin and cold storage are urgently needed at the clinic.")).toBe("Medical");
   });
 });
