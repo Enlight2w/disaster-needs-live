@@ -202,6 +202,63 @@ export function buildShareMessage(need: ResponseNeed): string {
   return `🚨 Urgent need: ${need.title} (${need.quantity}) · ${need.location} · Category: ${need.category} · Disaster Needs Live`;
 }
 
+export type CoordinationPathway = {
+  id: "ifrc-local" | "ifrc-global" | "st-john" | "insarag";
+  label: string;
+  detail: string;
+  href: string;
+  kind: "directory" | "contact" | "phone";
+};
+
+const IFRC_NATIONAL_SOCIETIES_DIRECTORY = "https://www.ifrc.org/national-societies-directory";
+const IFRC_CONTACT_PAGE = "https://www.ifrc.org/contact";
+const ST_JOHN_GLOBAL_PHONE = "tel:+442045830202";
+const INSARAG_USAR_DIRECTORY = "https://insarag.org/directory/usar-directory/";
+
+/** Prepare an auditable, request-specific coordination message without personal contact data. */
+export function buildQuickReplyMessage(need: ResponseNeed): string {
+  return `Hello — I’m coordinating a possible response to “${need.title}” (${need.quantity}) in ${need.location}. We can discuss safe handover details, timing, and any access constraints through the verified coordination route. Please confirm the request status and a safe next step.`;
+}
+
+/**
+ * Return institutional coordination pathways rather than claiming real-time rescue-team availability.
+ * The caller presents these as links to official directories or global offices, never as dispatch endpoints.
+ */
+export function coordinationPathwaysForNeed(need: ResponseNeed): CoordinationPathway[] {
+  const incident = CRISIS_INCIDENTS.find(item => item.id === need.incidentId);
+  const country = incident?.country ?? "the affected country";
+  return [
+    {
+      id: "ifrc-local",
+      label: `Find the ${country} Red Cross / Red Crescent`,
+      detail: "Official National Societies Directory · country-level routing",
+      href: IFRC_NATIONAL_SOCIETIES_DIRECTORY,
+      kind: "directory",
+    },
+    {
+      id: "ifrc-global",
+      label: "IFRC global contact",
+      detail: "Institutional contact route · not emergency dispatch",
+      href: IFRC_CONTACT_PAGE,
+      kind: "contact",
+    },
+    {
+      id: "st-john",
+      label: "Call St John International",
+      detail: "+44 20 4583 0202 · global office · not emergency dispatch",
+      href: ST_JOHN_GLOBAL_PHONE,
+      kind: "phone",
+    },
+    {
+      id: "insarag",
+      label: "Browse INSARAG USAR teams",
+      detail: "Search-and-rescue directory · availability must be confirmed",
+      href: INSARAG_USAR_DIRECTORY,
+      kind: "directory",
+    },
+  ];
+}
+
 export function nextNeedStatus(status: NeedStatus): NeedStatus {
   if (status === "posted") return "in_progress";
   if (status === "in_progress") return "fulfilled";

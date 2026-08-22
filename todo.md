@@ -27,4 +27,9 @@
 - [x] Add secure server-side AI translation with a clear request-language selector and fallback behavior.
 - [x] Add an accessible pulsing visual state to high-urgency map pins and the fallback map layer.
 - [x] Add and run Vitest coverage for translation output handling and urgent-pin selection.
-- [ ] Validate translation controls and urgent pin treatment across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Validate translation controls and urgent pin treatment across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Verify official global contact pathways for the International Federation of Red Cross and Red Crescent Societies and St John International; clarify the requested “ARMEF” organization before surfacing it.
+- [x] Design a safe quick-reply action that prepares a request-specific coordination message without exposing unverified personal contact details.
+- [x] Add incident-aware regional coordination guidance that is explicitly sourced and does not imply live rescue-team availability.
+- [x] Add and run Vitest coverage for contact-link and quick-reply message construction.
+- [ ] Validate the quick-reply and contact pathways across desktop and mobile, save a checkpoint, and deliver the updated project version.

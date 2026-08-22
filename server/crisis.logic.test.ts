@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   CRISIS_INCIDENTS,
   RESPONSE_NEEDS,
+  buildQuickReplyMessage,
   buildShareMessage,
+  coordinationPathwaysForNeed,
   filterIncidents,
   filterResponseNeeds,
   formatCoordinates,
@@ -66,6 +68,20 @@ describe("crisis-board logic", () => {
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Safe water kits");
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Beira coast, Mozambique");
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Category: Water");
+  });
+
+  it("builds a coordination reply without adding personal contact data", () => {
+    const reply = buildQuickReplyMessage(RESPONSE_NEEDS[0]!);
+    expect(reply).toContain("Safe water kits");
+    expect(reply).toContain("Beira coast, Mozambique");
+    expect(reply).toContain("safe handover details");
+  });
+
+  it("offers official local, global, and rescue-directory coordination paths", () => {
+    const pathways = coordinationPathwaysForNeed(RESPONSE_NEEDS[1]!);
+    expect(pathways.map(pathway => pathway.id)).toEqual(["ifrc-local", "ifrc-global", "st-john", "insarag"]);
+    expect(pathways.find(pathway => pathway.id === "st-john")?.href).toBe("tel:+442045830202");
+    expect(pathways.find(pathway => pathway.id === "insarag")?.href).toContain("insarag.org");
   });
 
   it("marks only unresolved high-urgency requests for pulsing incident pins", () => {

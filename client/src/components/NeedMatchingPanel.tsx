@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -7,6 +8,9 @@ import {
   Clock3,
   HeartHandshake,
   Languages,
+  MessageCircle,
+  ExternalLink,
+  Phone,
   PackageCheck,
   Radio,
   Share2,
@@ -23,6 +27,8 @@ import {
   type ResponseNeed,
   type TranslationLanguage,
   buildShareMessage,
+  buildQuickReplyMessage,
+  coordinationPathwaysForNeed,
   filterResponseNeeds,
   nextNeedStatus,
 } from "@/lib/crisis";
@@ -62,6 +68,8 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
   const [translations, setTranslations] = useState<Record<string, { title: string; detail: string; language: TranslationLanguage }>>({});
   const [showTranslation, setShowTranslation] = useState<Record<string, boolean>>({});
   const [translatingId, setTranslatingId] = useState<string | null>(null);
+  const [replyNeed, setReplyNeed] = useState<ResponseNeed | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
   const translateNeed = trpc.needs.translate.useMutation();
 
   const matchingNeeds = useMemo(() => filterResponseNeeds(RESPONSE_NEEDS, category), [category]);
@@ -128,6 +136,21 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
         },
       }
     );
+  };
+
+  const openQuickReply = (need: ResponseNeed) => {
+    setReplyNeed(need);
+    setReplyDraft(buildQuickReplyMessage(need));
+  };
+
+  const copyQuickReply = async () => {
+    if (!replyDraft.trim()) return;
+    try {
+      await navigator.clipboard.writeText(replyDraft);
+      toast.success("Coordination reply copied", { description: "Use a verified contact route before sharing details or arranging a handover." });
+    } catch {
+      toast.error("Could not copy the reply", { description: "Select and copy the message manually." });
+    }
   };
 
   return (
@@ -213,6 +236,9 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
               <div className="mt-3 flex items-center justify-between gap-3">
                 <p className="inline-flex items-center gap-1.5 text-[10px] text-slate-500"><Sparkles className="size-3 text-[#7bf1c9]" />{meta.detail}</p>
                 <div className="flex shrink-0 items-center gap-1.5">
+                  <button type="button" onClick={() => openQuickReply(need)} className="inline-flex items-center gap-1 rounded-lg bg-[#f8bd61]/10 px-2 py-1.5 text-[10px] font-semibold text-[#ffd486] transition-colors hover:bg-[#f8bd61] hover:text-[#261908]" aria-label={`Prepare a coordination reply for ${need.title}`}>
+                    <MessageCircle className="size-3" />Reply
+                  </button>
                   <button type="button" onClick={() => toggleTranslation(need)} disabled={translatingId === need.id} className="inline-flex items-center gap-1 rounded-lg bg-white/[0.07] px-2 py-1.5 text-[10px] font-semibold text-slate-200 transition-colors hover:bg-white/[0.12] disabled:text-slate-500" aria-label={`${isTranslated ? "Show original" : `Translate request to ${translationLanguage}`} for ${need.title}`}>
                     <Languages className="size-3" />{translatingId === need.id ? "…" : isTranslated ? "Original" : "Translate"}
                   </button>
@@ -230,6 +256,36 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
           );
         })}
       </div>
+
+      <Dialog open={Boolean(replyNeed)} onOpenChange={open => { if (!open) setReplyNeed(null); }}>
+        <DialogContent className="border-white/10 bg-[#0d1b2a] text-white sm:max-w-[590px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl tracking-[-0.05em]">Coordinate a safe reply</DialogTitle>
+            <DialogDescription className="leading-5 text-slate-400">This prepares a message for <span className="font-semibold text-slate-200">{replyNeed?.title ?? "this request"}</span>. It does not send a message or reveal unverified personal contact details.</DialogDescription>
+          </DialogHeader>
+
+          <textarea value={replyDraft} onChange={event => setReplyDraft(event.target.value)} className="min-h-28 w-full resize-y rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-200 outline-none ring-[#7bf1c9]/40 focus:ring-2" aria-label="Prepared coordination reply" />
+
+          <div className="rounded-xl border border-[#f8bd61]/20 bg-[#f8bd61]/[0.07] p-3">
+            <p className="text-[11px] leading-5 text-[#ffe2ae]">Confirm the requester’s identity and current status through an official local route before sharing personal, medical, or location-sensitive information.</p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-mono text-[10px] font-semibold tracking-[0.1em] text-[#7bf1c9]">OFFICIAL COORDINATION PATHWAYS</p>
+            {replyNeed && coordinationPathwaysForNeed(replyNeed).map(pathway => (
+              <a key={pathway.id} href={pathway.href} target={pathway.kind === "phone" ? undefined : "_blank"} rel={pathway.kind === "phone" ? undefined : "noreferrer"} className="group flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition-colors hover:border-[#7bf1c9]/30 hover:bg-[#7bf1c9]/[0.05]">
+                <span className="min-w-0"><span className="block text-xs font-semibold text-slate-100">{pathway.label}</span><span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{pathway.detail}</span></span>
+                {pathway.kind === "phone" ? <Phone className="size-4 shrink-0 text-[#f8bd61]" /> : <ExternalLink className="size-4 shrink-0 text-[#7bf1c9] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />}
+              </a>
+            ))}
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => setReplyNeed(null)} className="h-10 rounded-xl border-white/15 bg-white/5 text-xs font-semibold text-white hover:bg-white/10 hover:text-white">Close</Button>
+            <Button onClick={copyQuickReply} className="h-10 rounded-xl bg-[#7bf1c9] text-xs font-bold text-[#07111e] hover:bg-[#a5f8db]"><MessageCircle className="mr-2 size-3.5" />Copy coordination reply</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
