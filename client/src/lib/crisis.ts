@@ -108,9 +108,20 @@ export type ResponseCategoryFilter = (typeof RESPONSE_CATEGORY_OPTIONS)[number];
 export type ResponseCategory = Exclude<ResponseCategoryFilter, "All">;
 export type NeedStatus = "posted" | "in_progress" | "fulfilled";
 export type NeedUrgency = "high" | "standard";
+export type CommitmentStatus = "not_committed" | "committed";
 
 export const TRANSLATION_LANGUAGES = ["Arabic", "French", "Portuguese", "Spanish", "Swahili"] as const;
 export type TranslationLanguage = (typeof TRANSLATION_LANGUAGES)[number];
+
+export const EVIDENCE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
+export type EvidenceMimeType = (typeof EVIDENCE_MIME_TYPES)[number];
+export const EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
+
+export type EvidenceFileLike = {
+  name: string;
+  type: string;
+  size: number;
+};
 
 export type ResponseNeed = {
   id: string;
@@ -218,6 +229,16 @@ const INSARAG_USAR_DIRECTORY = "https://insarag.org/directory/usar-directory/";
 /** Prepare an auditable, request-specific coordination message without personal contact data. */
 export function buildQuickReplyMessage(need: ResponseNeed): string {
   return `Hello — I’m coordinating a possible response to “${need.title}” (${need.quantity}) in ${need.location}. We can discuss safe handover details, timing, and any access constraints through the verified coordination route. Please confirm the request status and a safe next step.`;
+}
+
+/** Validate attachment metadata before sending bytes to the authenticated upload procedure. */
+export function validateEvidenceFile(file: EvidenceFileLike): { valid: boolean; reason?: string } {
+  if (!EVIDENCE_MIME_TYPES.includes(file.type as EvidenceMimeType)) {
+    return { valid: false, reason: "Choose a JPG, PNG, WEBP, or PDF file." };
+  }
+  if (file.size <= 0) return { valid: false, reason: "The selected file is empty." };
+  if (file.size > EVIDENCE_MAX_BYTES) return { valid: false, reason: "Files must be 5 MB or smaller." };
+  return { valid: true };
 }
 
 /**

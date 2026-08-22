@@ -1,20 +1,25 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
 import {
   CheckCircle2,
+  BadgeCheck,
   CircleDashed,
   Clock3,
   HeartHandshake,
   Languages,
   MessageCircle,
   ExternalLink,
+  FileCheck2,
   Phone,
   PackageCheck,
   Radio,
   Share2,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -31,6 +36,7 @@ import {
   coordinationPathwaysForNeed,
   filterResponseNeeds,
   nextNeedStatus,
+  validateEvidenceFile,
 } from "@/lib/crisis";
 
 const statusMeta: Record<NeedStatus, { label: string; detail: string; icon: typeof CircleDashed; className: string }> = {
@@ -70,9 +76,30 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
   const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [replyNeed, setReplyNeed] = useState<ResponseNeed | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [selectedEvidence, setSelectedEvidence] = useState<File | null>(null);
+  const [evidenceByNeed, setEvidenceByNeed] = useState<Record<string, { key: string; url: string; fileName: string }>>({});
+  const [committedNeedIds, setCommittedNeedIds] = useState<Record<string, boolean>>({});
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
+  const { isAuthenticated } = useAuth();
+  const utils = trpc.useUtils();
   const translateNeed = trpc.needs.translate.useMutation();
+  const uploadEvidence = trpc.needs.uploadEvidence.useMutation();
+  const commitResponder = trpc.needs.commit.useMutation();
 
   const matchingNeeds = useMemo(() => filterResponseNeeds(RESPONSE_NEEDS, category), [category]);
+  const commitmentQuery = trpc.needs.commitmentStatus.useQuery(
+    { needId: replyNeed?.id ?? "inactive" },
+    { enabled: Boolean(replyNeed) }
+  );
+  const commitmentSummariesQuery = trpc.needs.commitmentStatuses.useQuery({
+    needIds: RESPONSE_NEEDS.map(need => need.id),
+  });
+
+  useEffect(() => {
+    if (replyNeed && commitmentQuery.data?.currentResponderCommitted) {
+      setCommittedNeedIds(current => ({ ...current, [replyNeed.id]: true }));
+    }
+  }, [replyNeed, commitmentQuery.data?.currentResponderCommitted]);
 
   const advanceStatus = (id: string) => {
     const current = statuses[id] ?? "posted";
@@ -141,6 +168,7 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
   const openQuickReply = (need: ResponseNeed) => {
     setReplyNeed(need);
     setReplyDraft(buildQuickReplyMessage(need));
+    setSelectedEvidence(null);
   };
 
   const copyQuickReply = async () => {
@@ -150,6 +178,75 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
       toast.success("Coordination reply copied", { description: "Use a verified contact route before sharing details or arranging a handover." });
     } catch {
       toast.error("Could not copy the reply", { description: "Select and copy the message manually." });
+    }
+  };
+
+  const pickEvidence = () => {
+    if (!isAuthenticated) {
+      toast.message("Sign in to attach evidence", { description: "Credential and capacity files are restricted to signed-in responders." });
+      startLogin();
+      return;
+    }
+    evidenceInputRef.current?.click();
+  };
+
+  const onEvidenceSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const validation = validateEvidenceFile(file);
+    if (!validation.valid) {
+      toast.error("Evidence file not accepted", { description: validation.reason });
+      event.target.value = "";
+      return;
+    }
+    setSelectedEvidence(file);
+    toast.success("Evidence attached for review", { description: "The file will upload securely only when you record your commitment." });
+  };
+
+  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read selected file"));
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== "string") return reject(new Error("Could not read selected file"));
+      resolve(dataUrl.split(",")[1] ?? "");
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const recordCommitment = async () => {
+    if (!replyNeed) return;
+    if (!isAuthenticated) {
+      toast.message("Sign in to record a commitment", { description: "Only authenticated responders can create a fulfillment commitment." });
+      startLogin();
+      return;
+    }
+
+    try {
+      let evidence = evidenceByNeed[replyNeed.id];
+      if (selectedEvidence) {
+        const base64 = await fileToBase64(selectedEvidence);
+        const uploaded = await uploadEvidence.mutateAsync({
+          needId: replyNeed.id,
+          fileName: selectedEvidence.name,
+          contentType: selectedEvidence.type as "image/jpeg" | "image/png" | "image/webp" | "application/pdf",
+          base64,
+        });
+        evidence = { key: uploaded.key, url: uploaded.url, fileName: uploaded.fileName };
+        setEvidenceByNeed(current => ({ ...current, [replyNeed.id]: evidence! }));
+        setSelectedEvidence(null);
+      }
+
+      const result = await commitResponder.mutateAsync({
+        needId: replyNeed.id,
+        evidenceKey: evidence?.key,
+        evidenceUrl: evidence?.url,
+      });
+      setCommittedNeedIds(current => ({ ...current, [replyNeed.id]: result.currentResponderCommitted }));
+      await utils.needs.commitmentStatus.invalidate({ needId: replyNeed.id });
+      toast.success("Responder commitment recorded", { description: "The commitment tracker now shows this request as backed by a signed-in responder." });
+    } catch (error) {
+      toast.error("Could not record commitment", { description: "The request remains unchanged. Review the file and try again." });
     }
   };
 
@@ -209,6 +306,9 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
           const translated = translations[need.id];
           const isTranslated = Boolean(translated && showTranslation[need.id]);
           const isHighUrgency = need.urgency === "high" && status !== "fulfilled";
+          const persistedCommitment = commitmentSummariesQuery.data?.find(summary => summary.needId === need.id);
+          const responderCommitted = Boolean(committedNeedIds[need.id] || persistedCommitment?.committedCount);
+          const committedCount = persistedCommitment?.committedCount ?? 0;
           return (
             <article id={`need-${need.id}`} key={need.id} className={cn("group rounded-2xl border bg-[#07131f]/75 p-4 transition-colors hover:border-white/[0.15]", isHighUrgency ? "border-[#f8bd61]/35" : "border-white/[0.08]")}>
               <div className="flex items-start justify-between gap-3">
@@ -231,7 +331,7 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
                   <StatusIcon className={cn("size-3", status === "in_progress" && "animate-pulse")} />
                   {meta.label}
                 </span>
-                <span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500"><Clock3 className="size-3" />{need.updatedAt}</span>
+                <span className="flex items-center gap-2"><span className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500"><Clock3 className="size-3" />{need.updatedAt}</span>{responderCommitted && <span className="inline-flex items-center gap-1 rounded-full bg-[#7bf1c9]/10 px-2 py-1 font-mono text-[8px] font-semibold text-[#a9f8dc] ring-1 ring-[#7bf1c9]/20"><BadgeCheck className="size-2.5" />{committedCount || 1} COMMITTED</span>}</span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <p className="inline-flex items-center gap-1.5 text-[10px] text-slate-500"><Sparkles className="size-3 text-[#7bf1c9]" />{meta.detail}</p>
@@ -264,11 +364,32 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
             <DialogDescription className="leading-5 text-slate-400">This prepares a message for <span className="font-semibold text-slate-200">{replyNeed?.title ?? "this request"}</span>. It does not send a message or reveal unverified personal contact details.</DialogDescription>
           </DialogHeader>
 
+          <section className="rounded-xl border border-[#7bf1c9]/15 bg-[#7bf1c9]/[0.045] p-3" aria-label="Fulfillment commitment tracker">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono text-[10px] font-semibold tracking-[0.1em] text-[#a9f8dc]">FULFILLMENT TRACKER</span>
+              <span className="font-mono text-[10px] text-slate-500">{commitmentQuery.data?.committedCount ?? 0} signed-in responder{(commitmentQuery.data?.committedCount ?? 0) === 1 ? "" : "s"}</span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg bg-[#07131f]/70 p-2.5"><span className="block font-mono text-[9px] text-[#a9f8dc]">01 · PREPARED</span><span className="mt-1 block text-[10px] text-slate-400">Coordination reply drafted</span></div>
+              <div className={cn("rounded-lg p-2.5", commitmentQuery.data?.currentResponderCommitted ? "bg-[#7bf1c9]/10" : "bg-[#07131f]/70")}><span className={cn("block font-mono text-[9px]", commitmentQuery.data?.currentResponderCommitted ? "text-[#a9f8dc]" : "text-slate-500")}>02 · COMMITTED</span><span className="mt-1 block text-[10px] text-slate-400">{commitmentQuery.data?.currentResponderCommitted ? "Your signed-in commitment is recorded" : "Awaiting responder commitment"}</span></div>
+              <div className="rounded-lg bg-[#07131f]/70 p-2.5"><span className="block font-mono text-[9px] text-slate-500">03 · FULFILLED</span><span className="mt-1 block text-[10px] text-slate-400">Requires local confirmation</span></div>
+            </div>
+          </section>
+
           <textarea value={replyDraft} onChange={event => setReplyDraft(event.target.value)} className="min-h-28 w-full resize-y rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-200 outline-none ring-[#7bf1c9]/40 focus:ring-2" aria-label="Prepared coordination reply" />
 
           <div className="rounded-xl border border-[#f8bd61]/20 bg-[#f8bd61]/[0.07] p-3">
             <p className="text-[11px] leading-5 text-[#ffe2ae]">Confirm the requester’s identity and current status through an official local route before sharing personal, medical, or location-sensitive information.</p>
           </div>
+
+          <section className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><p className="text-xs font-semibold text-slate-100">Credential or capacity evidence</p><p className="mt-1 text-[10px] leading-4 text-slate-500">JPG, PNG, WEBP, or PDF · 5 MB maximum · uploaded only after sign-in and commitment.</p></div>
+              <input ref={evidenceInputRef} onChange={onEvidenceSelected} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" />
+              <Button type="button" variant="outline" onClick={pickEvidence} className="h-9 rounded-lg border-white/15 bg-white/5 px-3 text-[10px] font-semibold text-slate-100 hover:bg-white/10 hover:text-white"><Upload className="mr-1.5 size-3.5" />Attach file</Button>
+            </div>
+            {(selectedEvidence || (replyNeed && evidenceByNeed[replyNeed.id])) && <div className="mt-3 flex items-center gap-2 border-t border-white/[0.08] pt-3 text-[10px] text-[#a9f8dc]"><FileCheck2 className="size-3.5" />{selectedEvidence ? `${selectedEvidence.name} · ready to upload with commitment` : `${evidenceByNeed[replyNeed!.id]!.fileName} · securely attached`}</div>}
+          </section>
 
           <div className="space-y-2">
             <p className="font-mono text-[10px] font-semibold tracking-[0.1em] text-[#7bf1c9]">OFFICIAL COORDINATION PATHWAYS</p>
@@ -283,6 +404,7 @@ export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: Ne
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setReplyNeed(null)} className="h-10 rounded-xl border-white/15 bg-white/5 text-xs font-semibold text-white hover:bg-white/10 hover:text-white">Close</Button>
             <Button onClick={copyQuickReply} className="h-10 rounded-xl bg-[#7bf1c9] text-xs font-bold text-[#07111e] hover:bg-[#a5f8db]"><MessageCircle className="mr-2 size-3.5" />Copy coordination reply</Button>
+            <Button onClick={recordCommitment} disabled={uploadEvidence.isPending || commitResponder.isPending || commitmentQuery.data?.currentResponderCommitted} className="h-10 rounded-xl bg-[#f8bd61] text-xs font-bold text-[#261908] hover:bg-[#ffd38a] disabled:bg-[#f8bd61]/35 disabled:text-[#f8bd61]"><BadgeCheck className="mr-2 size-3.5" />{commitmentQuery.data?.currentResponderCommitted ? "Commitment recorded" : uploadEvidence.isPending || commitResponder.isPending ? "Recording…" : "Record commitment"}</Button>
           </div>
         </DialogContent>
       </Dialog>

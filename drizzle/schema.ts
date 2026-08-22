@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +25,19 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/** Signed-in responder commitments that are associated with a specific request. */
+export const responderCommitments = mysqlTable("responderCommitments", {
+  id: int("id").autoincrement().primaryKey(),
+  needId: varchar("needId", { length: 80 }).notNull(),
+  responderId: int("responderId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["committed", "withdrawn"]).default("committed").notNull(),
+  evidenceKey: varchar("evidenceKey", { length: 768 }),
+  evidenceUrl: text("evidenceUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  responderNeedUnique: uniqueIndex("responderCommitments_responder_need_unique").on(table.responderId, table.needId),
+}));
+
+export type ResponderCommitment = typeof responderCommitments.$inferSelect;
+export type InsertResponderCommitment = typeof responderCommitments.$inferInsert;

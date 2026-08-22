@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, responderCommitments, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,59 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function upsertResponderCommitment(input: {
+  needId: string;
+  responderId: number;
+  evidenceKey?: string;
+  evidenceUrl?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+
+  await db.insert(responderCommitments).values({
+    needId: input.needId,
+    responderId: input.responderId,
+    status: "committed",
+    evidenceKey: input.evidenceKey,
+    evidenceUrl: input.evidenceUrl,
+  }).onDuplicateKeyUpdate({
+    set: {
+      status: "committed",
+      evidenceKey: input.evidenceKey,
+      evidenceUrl: input.evidenceUrl,
+    },
+  });
+}
+
+export async function getCommitmentSummary(needId: string, responderId?: number) {
+  const db = await getDb();
+  if (!db) return { committedCount: 0, currentResponderCommitted: false };
+
+  const commitments = await db.select({ responderId: responderCommitments.responderId, status: responderCommitments.status })
+    .from(responderCommitments)
+    .where(and(eq(responderCommitments.needId, needId), eq(responderCommitments.status, "committed")));
+
+  return {
+    committedCount: commitments.length,
+    currentResponderCommitted: responderId ? commitments.some(commitment => commitment.responderId === responderId) : false,
+  };
+}
+
+export async function getCommitmentSummaries(needIds: string[], responderId?: number) {
+  if (needIds.length === 0) return [];
+  const db = await getDb();
+  if (!db) return needIds.map(needId => ({ needId, committedCount: 0, currentResponderCommitted: false }));
+
+  const commitments = await db.select({ needId: responderCommitments.needId, responderId: responderCommitments.responderId })
+    .from(responderCommitments)
+    .where(and(inArray(responderCommitments.needId, needIds), eq(responderCommitments.status, "committed")));
+
+  return needIds.map(needId => {
+    const matching = commitments.filter(commitment => commitment.needId === needId);
+    return {
+      needId,
+      committedCount: matching.length,
+      currentResponderCommitted: responderId ? matching.some(commitment => commitment.responderId === responderId) : false,
+    };
+  });
+}

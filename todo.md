@@ -32,4 +32,11 @@
 - [x] Design a safe quick-reply action that prepares a request-specific coordination message without exposing unverified personal contact details.
 - [x] Add incident-aware regional coordination guidance that is explicitly sourced and does not imply live rescue-team availability.
 - [x] Add and run Vitest coverage for contact-link and quick-reply message construction.
-- [ ] Validate the quick-reply and contact pathways across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Validate the quick-reply and contact pathways across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Define a request-level commitment tracker that distinguishes prepared coordination from committed fulfillment.
+- [x] Persist signed-in responder commitments so the status tracker is not limited to one browser session.
+- [x] Add a responder commitment action and persistent visual state to the reply dialog and matching request card.
+- [x] Add secure client-side attachment selection for credential or aid-capacity photos and documents with clear prototype limits.
+- [x] Add and run Vitest coverage for commitment-status transitions and attachment validation rules.
+- [x] Load persisted commitment summaries for visible matching cards on initial render and test committed-card hydration.
+- [ ] Validate the enhanced reply workflow across desktop and mobile, save a checkpoint, and deliver the updated project version.

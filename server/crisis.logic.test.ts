@@ -11,6 +11,7 @@ import {
   getHeuristicCategory,
   incidentIdsForCategory,
   urgentIncidentIds,
+  validateEvidenceFile,
   nextNeedStatus,
   stageAmberAlert,
 } from "../client/src/lib/crisis";
@@ -86,5 +87,12 @@ describe("crisis-board logic", () => {
 
   it("marks only unresolved high-urgency requests for pulsing incident pins", () => {
     expect([...urgentIncidentIds()]).toEqual(["beira", "mamuju"]);
+  });
+
+  it("accepts only safe, non-empty evidence files within the upload limit", () => {
+    expect(validateEvidenceFile({ name: "capacity.pdf", type: "application/pdf", size: 1_024 })).toEqual({ valid: true });
+    expect(validateEvidenceFile({ name: "script.exe", type: "application/octet-stream", size: 1_024 }).valid).toBe(false);
+    expect(validateEvidenceFile({ name: "empty.jpg", type: "image/jpeg", size: 0 }).valid).toBe(false);
+    expect(validateEvidenceFile({ name: "large.png", type: "image/png", size: 5 * 1024 * 1024 + 1 }).valid).toBe(false);
   });
 });

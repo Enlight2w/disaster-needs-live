@@ -3,8 +3,10 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
-import { RESPONSE_CATEGORY_OPTIONS, getHeuristicCategory } from "../client/src/lib/crisis";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { storagePut } from "./storage";
+import { EVIDENCE_MAX_BYTES, EVIDENCE_MIME_TYPES, RESPONSE_CATEGORY_OPTIONS, getHeuristicCategory } from "../client/src/lib/crisis";
+import { getCommitmentSummaries, getCommitmentSummary, upsertResponderCommitment } from "./db";
 
 const aiCategoryOptions = RESPONSE_CATEGORY_OPTIONS.filter(option => option !== "All");
 const aiCategorySchema = z.object({
@@ -17,6 +19,8 @@ const translationSchema = z.object({
   title: z.string().trim().min(1).max(240),
   detail: z.string().trim().min(1).max(1200),
 });
+const evidenceMimeSchema = z.enum(EVIDENCE_MIME_TYPES);
+const maxEvidenceBase64Chars = Math.ceil((EVIDENCE_MAX_BYTES * 4) / 3) + 8;
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -113,6 +117,47 @@ export const appRouter = router({
           console.warn("[Needs] AI translation unavailable; retaining original request text.", error);
           return { title: input.title, detail: input.detail, targetLanguage: input.targetLanguage, source: "fallback" as const };
         }
+      }),
+    uploadEvidence: protectedProcedure
+      .input(z.object({
+        needId: z.string().trim().min(1).max(80),
+        fileName: z.string().trim().min(1).max(160),
+        contentType: evidenceMimeSchema,
+        base64: z.string().regex(/^[A-Za-z0-9+/]+={0,2}$/, "Attachment must be base64 encoded").min(4).max(maxEvidenceBase64Chars),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const fileBuffer = Buffer.from(input.base64, "base64");
+        if (fileBuffer.length === 0 || fileBuffer.length > EVIDENCE_MAX_BYTES) {
+          throw new Error("Attachment must be between 1 byte and 5 MB");
+        }
+        const safeFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120);
+        const { key, url } = await storagePut(
+          `responder-evidence/${ctx.user.id}/${input.needId}/${safeFileName}`,
+          fileBuffer,
+          input.contentType,
+        );
+        return { key, url, fileName: safeFileName, contentType: input.contentType, size: fileBuffer.length };
+      }),
+    commitmentStatus: publicProcedure
+      .input(z.object({ needId: z.string().trim().min(1).max(80) }))
+      .query(async ({ ctx, input }) => getCommitmentSummary(input.needId, ctx.user?.id)),
+    commitmentStatuses: publicProcedure
+      .input(z.object({ needIds: z.array(z.string().trim().min(1).max(80)).min(1).max(50) }))
+      .query(async ({ ctx, input }) => getCommitmentSummaries(input.needIds, ctx.user?.id)),
+    commit: protectedProcedure
+      .input(z.object({
+        needId: z.string().trim().min(1).max(80),
+        evidenceKey: z.string().trim().min(1).max(768).optional(),
+        evidenceUrl: z.string().trim().min(1).max(1200).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await upsertResponderCommitment({
+          needId: input.needId,
+          responderId: ctx.user.id,
+          evidenceKey: input.evidenceKey,
+          evidenceUrl: input.evidenceUrl,
+        });
+        return getCommitmentSummary(input.needId, ctx.user.id);
       }),
   }),
 
