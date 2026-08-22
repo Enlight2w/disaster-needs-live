@@ -23,3 +23,9 @@ These links are included only as institutional routing pathways. They do not rep
 The official **INSARAG USAR Directory** provides an overview of member countries and their Urban Search and Rescue teams, with team views by country, regional group, and emergency. It may be linked as a coordination and discovery resource only—not as a statement that a team is available, deployed, or reachable for direct dispatch. Source: <https://insarag.org/directory/usar-directory/>.
 
 The requested name **“ARMEF”** could not be confidently matched to an official global humanitarian or rescue organization during source review. It is therefore not included in the product contact directory until the organization’s full name or official website is confirmed.
+
+## Supporting Video (Verified 22 August 2026)
+
+The selected supporting video is **“How The Red Cross Responds To Disasters”** from the official American Red Cross YouTube channel. The video is 1 minute 58 seconds long and presents a general explanation of disaster response rather than coverage of a current, unverified incident. It is embedded as optional supporting context, with a clear source link and no autoplay. Source: <https://www.youtube.com/watch?v=fAugbZEew2s>.
+
+An OCHA video, **“This Is OCHA,”** from the official UN Humanitarian YouTube channel, was also verified as a credible general coordination explainer. The Red Cross video was selected because its disaster-response framing aligns more closely with the board’s responder and donor matching purpose. Source: <https://www.youtube.com/watch?v=6n_veh46IiM>.

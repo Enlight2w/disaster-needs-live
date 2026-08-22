@@ -371,6 +371,35 @@ export default function Home() {
           </div>
         </section>
 
+        <section aria-labelledby="response-video-heading" className="mt-12 overflow-hidden rounded-[28px] border border-white/10 bg-[#0b1928] shadow-[0_26px_70px_rgba(0,0,0,0.16)]">
+          <div className="grid lg:grid-cols-[0.8fr_1.2fr]">
+            <div className="flex flex-col justify-between p-6 sm:p-8 lg:p-10">
+              <div>
+                <p className="font-mono text-[10px] font-semibold tracking-[0.12em] text-[#f8bd61]">RESPONSE CONTEXT</p>
+                <h2 id="response-video-heading" className="mt-3 max-w-sm text-3xl font-bold leading-[1.02] tracking-[-0.06em] text-white">See how disaster response moves from impact to action.</h2>
+                <p className="mt-4 max-w-md text-sm leading-6 text-slate-400">A short explainer from the American Red Cross offers practical context for the response work behind a coordinated request. It is included as optional learning material—not as coverage of the illustrative incidents on this board.</p>
+              </div>
+              <div className="mt-7">
+                <a href="https://www.youtube.com/watch?v=fAugbZEew2s" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-semibold text-[#a9f8dc] transition-colors hover:text-white">Watch on YouTube <ArrowUpRight className="size-3.5" /></a>
+                <p className="mt-2 text-[10px] leading-4 text-slate-500">Source: American Red Cross · YouTube · 1:58 · External player loads only when viewed.</p>
+              </div>
+            </div>
+            <div className="border-t border-white/10 bg-[#07131f] p-3 sm:p-5 lg:border-l lg:border-t-0">
+              <div className="aspect-video overflow-hidden rounded-2xl border border-white/[0.08] bg-[#050c14] shadow-2xl">
+                <iframe
+                  className="size-full"
+                  src="https://www.youtube-nocookie.com/embed/fAugbZEew2s?rel=0&modestbranding=1"
+                  title="How The Red Cross Responds To Disasters — American Red Cross"
+                  loading="lazy"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="how-it-works" className="mt-16 grid gap-8 border-t border-white/10 pt-12 lg:grid-cols-[0.75fr_1.25fr]">
           <div>
             <p className="font-mono text-[10px] font-semibold tracking-[0.12em] text-[#7bf1c9]">THE OPERATING LOOP</p>

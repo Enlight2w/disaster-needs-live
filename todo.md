@@ -39,4 +39,7 @@
 - [x] Add secure client-side attachment selection for credential or aid-capacity photos and documents with clear prototype limits.
 - [x] Add and run Vitest coverage for commitment-status transitions and attachment validation rules.
 - [x] Load persisted commitment summaries for visible matching cards on initial render and test committed-card hydration.
-- [ ] Validate the enhanced reply workflow across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Validate the enhanced reply workflow across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Find and verify an official, context-appropriate YouTube video that supports crisis coordination without implying live incident coverage.
+- [x] Add the selected video with an accessible title, source attribution, privacy-conscious embed settings, and a non-blocking layout.
+- [ ] Validate the media embed across desktop and mobile, save a checkpoint, and deliver the updated project version.
