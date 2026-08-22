@@ -12,6 +12,12 @@ const aiCategorySchema = z.object({
   confidence: z.enum(["high", "medium", "low"]),
 });
 
+const supportedTranslationLanguages = ["Arabic", "French", "Portuguese", "Spanish", "Swahili"] as const;
+const translationSchema = z.object({
+  title: z.string().trim().min(1).max(240),
+  detail: z.string().trim().min(1).max(1200),
+});
+
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
@@ -64,6 +70,48 @@ export const appRouter = router({
         } catch (error) {
           console.warn("[Needs] AI categorization unavailable; using local keyword fallback.", error);
           return { category: getHeuristicCategory(input.description), confidence: "low" as const, source: "fallback" as const };
+        }
+      }),
+    translate: publicProcedure
+      .input(z.object({
+        title: z.string().trim().min(1).max(240),
+        detail: z.string().trim().min(1).max(1200),
+        targetLanguage: z.enum(supportedTranslationLanguages),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const response = await invokeLLM({
+            model: "gpt-5-mini",
+            messages: [
+              {
+                role: "system",
+                content: `Translate each field into ${input.targetLanguage}. Preserve names, locations, quantities, units, urgency, and humanitarian context exactly. Do not add advice, safety claims, or new facts. Return JSON only.`,
+              },
+              { role: "user", content: JSON.stringify({ title: input.title, detail: input.detail }) },
+            ],
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "need_translation",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    detail: { type: "string" },
+                  },
+                  required: ["title", "detail"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+          const content = response.choices[0]?.message.content;
+          if (typeof content !== "string") throw new Error("AI response did not include text content");
+          return { ...translationSchema.parse(JSON.parse(content)), targetLanguage: input.targetLanguage, source: "ai" as const };
+        } catch (error) {
+          console.warn("[Needs] AI translation unavailable; retaining original request text.", error);
+          return { title: input.title, detail: input.detail, targetLanguage: input.targetLanguage, source: "fallback" as const };
         }
       }),
   }),

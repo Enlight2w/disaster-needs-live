@@ -8,6 +8,7 @@ import {
   formatCoordinates,
   getHeuristicCategory,
   incidentIdsForCategory,
+  urgentIncidentIds,
   nextNeedStatus,
   stageAmberAlert,
 } from "../client/src/lib/crisis";
@@ -65,5 +66,9 @@ describe("crisis-board logic", () => {
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Safe water kits");
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Beira coast, Mozambique");
     expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Category: Water");
+  });
+
+  it("marks only unresolved high-urgency requests for pulsing incident pins", () => {
+    expect([...urgentIncidentIds()]).toEqual(["beira", "mamuju"]);
   });
 });

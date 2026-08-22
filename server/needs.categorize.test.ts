@@ -45,4 +45,24 @@ describe("needs.categorize", () => {
 
     expect(result).toEqual({ category: "Shelter", confidence: "low", source: "fallback" });
   });
+
+  it("returns structured translated request text from the AI", async () => {
+    invokeLLMMock.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Kits de agua potable", detail: "El punto de distribución está abierto para las familias." }) } }],
+    });
+
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.needs.translate({ title: "Safe water kits", detail: "The distribution point is open for families.", targetLanguage: "Spanish" });
+
+    expect(result).toEqual({ title: "Kits de agua potable", detail: "El punto de distribución está abierto para las familias.", targetLanguage: "Spanish", source: "ai" });
+  });
+
+  it("retains original request text when translation is unavailable", async () => {
+    invokeLLMMock.mockRejectedValue(new Error("temporary upstream failure"));
+
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.needs.translate({ title: "Safe water kits", detail: "The distribution point is open for families.", targetLanguage: "French" });
+
+    expect(result).toEqual({ title: "Safe water kits", detail: "The distribution point is open for families.", targetLanguage: "French", source: "fallback" });
+  });
 });

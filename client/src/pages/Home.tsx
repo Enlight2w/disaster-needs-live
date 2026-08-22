@@ -35,6 +35,7 @@ import {
   filterIncidents,
   formatCoordinates,
   incidentIdsForCategory,
+  urgentIncidentIds,
   type ResponseCategoryFilter,
   stageAmberAlert,
 } from "@/lib/crisis";
@@ -71,6 +72,7 @@ export default function Home() {
 
   const visibleIncidents = useMemo(() => filterIncidents(CRISIS_INCIDENTS, filter), [filter]);
   const visibleIncidentIds = useMemo(() => incidentIdsForCategory(CRISIS_INCIDENTS, needCategory), [needCategory]);
+  const highUrgencyIncidentIds = useMemo(() => urgentIncidentIds(), []);
   const activeIncident = CRISIS_INCIDENTS.find(incident => incident.id === activeId) ?? CRISIS_INCIDENTS[0];
 
   useEffect(() => {
@@ -113,7 +115,11 @@ export default function Home() {
     CRISIS_INCIDENTS.forEach(incident => {
       const pin = document.createElement("button");
       pin.type = "button";
-      pin.className = incident.severity === "critical" ? "disaster-map-pin disaster-map-pin--critical" : "disaster-map-pin";
+      pin.className = cn(
+        "disaster-map-pin",
+        incident.severity === "critical" && "disaster-map-pin--critical",
+        highUrgencyIncidentIds.has(incident.id) && "disaster-map-pin--urgent",
+      );
       pin.setAttribute("aria-label", `View ${incident.place} incident`);
       pin.innerHTML = `<span></span>`;
       pin.addEventListener("click", () => focusIncident(incident));
@@ -237,8 +243,8 @@ export default function Home() {
               <svg className="absolute inset-0 size-full" viewBox="0 0 1000 600" preserveAspectRatio="none">
                 <path d="M 122 174 C 260 104, 410 238, 533 196 S 764 92, 898 165" fill="none" stroke="rgba(123,241,201,0.22)" strokeWidth="1.3" strokeDasharray="5 7" />
                 <path d="M 210 420 C 342 344, 481 446, 612 352 S 788 260, 916 327" fill="none" stroke="rgba(248,189,97,0.22)" strokeWidth="1.3" strokeDasharray="5 7" />
-                <circle cx="615" cy="303" r="5" fill="#f8bd61" opacity={visibleIncidentIds.has("beira") ? 1 : 0.12} /><circle cx="615" cy="303" r="13" fill="none" stroke="rgba(248,189,97,0.50)" strokeWidth="1" opacity={visibleIncidentIds.has("beira") ? 1 : 0.12} />
-                <circle cx="746" cy="350" r="4" fill="#7bf1c9" opacity={visibleIncidentIds.has("mamuju") ? 1 : 0.12} /><circle cx="746" cy="350" r="10" fill="none" stroke="rgba(123,241,201,0.42)" strokeWidth="1" opacity={visibleIncidentIds.has("mamuju") ? 1 : 0.12} />
+                <g className={cn("map-fallback-pin", highUrgencyIncidentIds.has("beira") && "map-fallback-pin--urgent")} style={{ opacity: visibleIncidentIds.has("beira") ? 1 : 0.12 }}><circle cx="615" cy="303" r="5" fill="#f8bd61" /><circle cx="615" cy="303" r="13" fill="none" stroke="rgba(248,189,97,0.50)" strokeWidth="1" /></g>
+                <g className={cn("map-fallback-pin", highUrgencyIncidentIds.has("mamuju") && "map-fallback-pin--urgent")} style={{ opacity: visibleIncidentIds.has("mamuju") ? 1 : 0.12 }}><circle cx="746" cy="350" r="4" fill="#7bf1c9" /><circle cx="746" cy="350" r="10" fill="none" stroke="rgba(123,241,201,0.42)" strokeWidth="1" /></g>
                 <circle cx="652" cy="433" r="4" fill="#f8bd61" opacity={visibleIncidentIds.has("cebu") ? 1 : 0.12} /><circle cx="236" cy="384" r="4" fill="#7bf1c9" opacity={visibleIncidentIds.has("peru") ? 1 : 0.12} />
               </svg>
               <span className="map-coordinate map-coordinate--one">34.839°E</span>

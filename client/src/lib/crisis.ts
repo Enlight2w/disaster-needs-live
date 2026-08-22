@@ -107,6 +107,10 @@ export const RESPONSE_CATEGORY_OPTIONS = [
 export type ResponseCategoryFilter = (typeof RESPONSE_CATEGORY_OPTIONS)[number];
 export type ResponseCategory = Exclude<ResponseCategoryFilter, "All">;
 export type NeedStatus = "posted" | "in_progress" | "fulfilled";
+export type NeedUrgency = "high" | "standard";
+
+export const TRANSLATION_LANGUAGES = ["Arabic", "French", "Portuguese", "Spanish", "Swahili"] as const;
+export type TranslationLanguage = (typeof TRANSLATION_LANGUAGES)[number];
 
 export type ResponseNeed = {
   id: string;
@@ -116,6 +120,7 @@ export type ResponseNeed = {
   detail: string;
   category: ResponseCategory;
   status: NeedStatus;
+  urgency: NeedUrgency;
   location: string;
   updatedAt: string;
 };
@@ -129,6 +134,7 @@ export const RESPONSE_NEEDS: ResponseNeed[] = [
     detail: "Distribution point is open to families arriving by boat.",
     category: "Water",
     status: "in_progress",
+    urgency: "high",
     location: "Beira coast, Mozambique",
     updatedAt: "2 min ago",
   },
@@ -140,6 +146,7 @@ export const RESPONSE_NEEDS: ResponseNeed[] = [
     detail: "Prioritize accessible kits for the community hub.",
     category: "Shelter",
     status: "posted",
+    urgency: "high",
     location: "Mamuju district, Indonesia",
     updatedAt: "8 min ago",
   },
@@ -151,6 +158,7 @@ export const RESPONSE_NEEDS: ResponseNeed[] = [
     detail: "Local clinic confirmed transfer and refrigerated storage.",
     category: "Medical",
     status: "fulfilled",
+    urgency: "standard",
     location: "Cebu province, Philippines",
     updatedAt: "14 min ago",
   },
@@ -162,6 +170,7 @@ export const RESPONSE_NEEDS: ResponseNeed[] = [
     detail: "Road access is limited; compact dry goods are preferred.",
     category: "Food",
     status: "posted",
+    urgency: "standard",
     location: "Piura valley, Peru",
     updatedAt: "19 min ago",
   },
@@ -197,6 +206,15 @@ export function nextNeedStatus(status: NeedStatus): NeedStatus {
   if (status === "posted") return "in_progress";
   if (status === "in_progress") return "fulfilled";
   return "fulfilled";
+}
+
+/** Return incident IDs with unresolved high-urgency requests for the pulse treatment. */
+export function urgentIncidentIds(needs: ResponseNeed[] = RESPONSE_NEEDS): Set<string> {
+  return new Set(
+    needs
+      .filter(need => need.urgency === "high" && need.status !== "fulfilled")
+      .map(need => need.incidentId),
+  );
 }
 
 export function getHeuristicCategory(description: string): ResponseCategory {

@@ -22,4 +22,9 @@
 - [x] Add accessible one-click sharing for individual matching requests with a safe copy-link fallback.
 - [x] Add and run Vitest coverage for category-to-incident pin filtering and share-message construction.
 - [x] Correct map pin filtering for categories with no matching incident and add edge-case coverage for no-match categories.
-- [ ] Validate map synchronization and sharing controls across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Validate map synchronization and sharing controls across desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Define an on-demand translated-view interaction that preserves the original request text.
+- [x] Add secure server-side AI translation with a clear request-language selector and fallback behavior.
+- [x] Add an accessible pulsing visual state to high-urgency map pins and the fallback map layer.
+- [x] Add and run Vitest coverage for translation output handling and urgent-pin selection.
+- [ ] Validate translation controls and urgent pin treatment across desktop and mobile, save a checkpoint, and deliver the updated project version.

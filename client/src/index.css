@@ -103,11 +103,21 @@
 .disaster-map-pin span { width: 5px; height: 5px; border-radius: 999px; background: #07111e; }
 .disaster-map-pin:hover { transform: scale(1.18); box-shadow: 0 0 0 9px rgba(123, 241, 201, 0.20), 0 10px 25px rgba(0, 0, 0, 0.45); }
 .disaster-map-pin--critical { background: #f8bd61; box-shadow: 0 0 0 7px rgba(248, 189, 97, 0.20), 0 8px 22px rgba(0, 0, 0, 0.42); }
+.disaster-map-pin--urgent { background: #f8bd61; box-shadow: 0 0 0 8px rgba(248, 189, 97, 0.30), 0 10px 26px rgba(0, 0, 0, 0.50); }
+.map-fallback-pin { transform-box: fill-box; transform-origin: center; }
 
 @media (prefers-reduced-motion: no-preference) {
   .disaster-map-pin--critical { animation: critical-pulse 1.8s ease-in-out infinite; }
+  .disaster-map-pin--urgent { animation: urgent-pin-pulse 1.25s cubic-bezier(0.23, 1, 0.32, 1) infinite; }
+  .map-fallback-pin--urgent { animation: fallback-urgent-pulse 1.25s cubic-bezier(0.23, 1, 0.32, 1) infinite; }
 }
 
 @keyframes critical-pulse {
   50% { box-shadow: 0 0 0 11px rgba(248, 189, 97, 0.06), 0 8px 22px rgba(0, 0, 0, 0.42); }
+}
+@keyframes urgent-pin-pulse {
+  50% { transform: scale(1.24); box-shadow: 0 0 0 15px rgba(248, 189, 97, 0.04), 0 10px 26px rgba(0, 0, 0, 0.50); }
+}
+@keyframes fallback-urgent-pulse {
+  50% { transform: scale(1.32); }
 }
