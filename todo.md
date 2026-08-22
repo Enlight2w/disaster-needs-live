@@ -17,4 +17,9 @@
 - [x] Add and run Vitest coverage for status transitions, category filters, and intake categorization.
 - [x] Add a clear empty state when a selected matching category has no open requests.
 - [x] Test the server-side AI categorization response and fallback contract without calling external services.
-- [ ] Validate the enhanced matching experience on desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Validate the enhanced matching experience on desktop and mobile, save a checkpoint, and deliver the updated project version.
+- [x] Define the category-to-incident relationship and synchronize the matching filter with visible map markers.
+- [x] Add accessible one-click sharing for individual matching requests with a safe copy-link fallback.
+- [x] Add and run Vitest coverage for category-to-incident pin filtering and share-message construction.
+- [x] Correct map pin filtering for categories with no matching incident and add edge-case coverage for no-match categories.
+- [ ] Validate map synchronization and sharing controls across desktop and mobile, save a checkpoint, and deliver the updated project version.

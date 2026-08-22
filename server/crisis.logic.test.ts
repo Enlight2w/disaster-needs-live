@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   CRISIS_INCIDENTS,
   RESPONSE_NEEDS,
+  buildShareMessage,
   filterIncidents,
   filterResponseNeeds,
   formatCoordinates,
   getHeuristicCategory,
+  incidentIdsForCategory,
   nextNeedStatus,
   stageAmberAlert,
 } from "../client/src/lib/crisis";
@@ -44,5 +46,24 @@ describe("crisis-board logic", () => {
 
   it("uses medical keywords as a safe fallback when AI is unavailable", () => {
     expect(getHeuristicCategory("Insulin and cold storage are urgently needed at the clinic.")).toBe("Medical");
+  });
+
+  it("maps a selected response category to only the relevant map incident pins", () => {
+    const visibleIncidentIds = incidentIdsForCategory(CRISIS_INCIDENTS, "Medical");
+    expect([...visibleIncidentIds]).toEqual(["cebu"]);
+  });
+
+  it("keeps the food map filter scoped to its matching incident", () => {
+    expect([...incidentIdsForCategory(CRISIS_INCIDENTS, "Food")]).toEqual(["peru"]);
+  });
+
+  it("returns no incident pins when a selected category has no open matching request", () => {
+    expect(incidentIdsForCategory(CRISIS_INCIDENTS, "Other").size).toBe(0);
+  });
+
+  it("builds a concise share payload with the need, category, and location", () => {
+    expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Safe water kits");
+    expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Beira coast, Mozambique");
+    expect(buildShareMessage(RESPONSE_NEEDS[0]!)).toContain("Category: Water");
   });
 });

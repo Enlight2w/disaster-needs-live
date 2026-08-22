@@ -34,6 +34,8 @@ import {
   type IncidentFilter,
   filterIncidents,
   formatCoordinates,
+  incidentIdsForCategory,
+  type ResponseCategoryFilter,
   stageAmberAlert,
 } from "@/lib/crisis";
 
@@ -60,12 +62,15 @@ function NeedChip({ need }: { need: IncidentCategory }) {
 
 export default function Home() {
   const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRegistryRef = useRef<Record<string, google.maps.marker.AdvancedMarkerElement>>({});
   const [activeId, setActiveId] = useState(CRISIS_INCIDENTS[0].id);
   const [filter, setFilter] = useState<IncidentFilter>("all");
+  const [needCategory, setNeedCategory] = useState<ResponseCategoryFilter>("All");
   const [reportOpen, setReportOpen] = useState(false);
   const [amberAlert, setAmberAlert] = useState(false);
 
   const visibleIncidents = useMemo(() => filterIncidents(CRISIS_INCIDENTS, filter), [filter]);
+  const visibleIncidentIds = useMemo(() => incidentIdsForCategory(CRISIS_INCIDENTS, needCategory), [needCategory]);
   const activeIncident = CRISIS_INCIDENTS.find(incident => incident.id === activeId) ?? CRISIS_INCIDENTS[0];
 
   useEffect(() => {
@@ -73,6 +78,16 @@ export default function Home() {
       setActiveId(visibleIncidents[0]?.id ?? CRISIS_INCIDENTS[0].id);
     }
   }, [activeId, visibleIncidents]);
+
+  useEffect(() => {
+    const visibleCategoryIncident = CRISIS_INCIDENTS.find(incident => visibleIncidentIds.has(incident.id));
+    if (visibleCategoryIncident && !visibleIncidentIds.has(activeId)) {
+      setActiveId(visibleCategoryIncident.id);
+    }
+    Object.entries(markerRegistryRef.current).forEach(([incidentId, marker]) => {
+      marker.map = visibleIncidentIds.has(incidentId) ? mapRef.current : null;
+    });
+  }, [activeId, visibleIncidentIds]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -103,12 +118,14 @@ export default function Home() {
       pin.innerHTML = `<span></span>`;
       pin.addEventListener("click", () => focusIncident(incident));
 
-      new google.maps.marker.AdvancedMarkerElement({
+      const marker = new google.maps.marker.AdvancedMarkerElement({
         map,
         position: incident.coordinates,
         title: `${incident.place}: ${incident.priorityNeed}`,
         content: pin,
       });
+      markerRegistryRef.current[incident.id] = marker;
+      marker.map = visibleIncidentIds.has(incident.id) ? map : null;
     });
   };
 
@@ -220,9 +237,9 @@ export default function Home() {
               <svg className="absolute inset-0 size-full" viewBox="0 0 1000 600" preserveAspectRatio="none">
                 <path d="M 122 174 C 260 104, 410 238, 533 196 S 764 92, 898 165" fill="none" stroke="rgba(123,241,201,0.22)" strokeWidth="1.3" strokeDasharray="5 7" />
                 <path d="M 210 420 C 342 344, 481 446, 612 352 S 788 260, 916 327" fill="none" stroke="rgba(248,189,97,0.22)" strokeWidth="1.3" strokeDasharray="5 7" />
-                <circle cx="615" cy="303" r="5" fill="#f8bd61" /><circle cx="615" cy="303" r="13" fill="none" stroke="rgba(248,189,97,0.50)" strokeWidth="1" />
-                <circle cx="746" cy="350" r="4" fill="#7bf1c9" /><circle cx="746" cy="350" r="10" fill="none" stroke="rgba(123,241,201,0.42)" strokeWidth="1" />
-                <circle cx="652" cy="433" r="4" fill="#f8bd61" /><circle cx="236" cy="384" r="4" fill="#7bf1c9" />
+                <circle cx="615" cy="303" r="5" fill="#f8bd61" opacity={visibleIncidentIds.has("beira") ? 1 : 0.12} /><circle cx="615" cy="303" r="13" fill="none" stroke="rgba(248,189,97,0.50)" strokeWidth="1" opacity={visibleIncidentIds.has("beira") ? 1 : 0.12} />
+                <circle cx="746" cy="350" r="4" fill="#7bf1c9" opacity={visibleIncidentIds.has("mamuju") ? 1 : 0.12} /><circle cx="746" cy="350" r="10" fill="none" stroke="rgba(123,241,201,0.42)" strokeWidth="1" opacity={visibleIncidentIds.has("mamuju") ? 1 : 0.12} />
+                <circle cx="652" cy="433" r="4" fill="#f8bd61" opacity={visibleIncidentIds.has("cebu") ? 1 : 0.12} /><circle cx="236" cy="384" r="4" fill="#7bf1c9" opacity={visibleIncidentIds.has("peru") ? 1 : 0.12} />
               </svg>
               <span className="map-coordinate map-coordinate--one">34.839°E</span>
               <span className="map-coordinate map-coordinate--two">118.889°E</span>
@@ -253,7 +270,7 @@ export default function Home() {
                 <span className="flex size-7 items-center justify-center rounded-lg bg-[#f8bd61]/15 text-[#ffd486]"><Crosshair className="size-3.5" /></span>
                 <span>
                   <span className="block font-mono text-[9px] font-semibold tracking-[0.12em] text-[#ffd486]">SATELLITE-READY MAP</span>
-                  <span className="mt-0.5 block text-[10px] text-slate-400">Use the map menu to switch base imagery</span>
+                  <span className="mt-0.5 block text-[10px] text-slate-400">{needCategory === "All" ? "All matching locations are visible" : `Showing ${needCategory.toLowerCase()} locations only`}</span>
                 </span>
               </div>
             </div>
@@ -329,7 +346,7 @@ export default function Home() {
         </section>
 
         <section className="mt-5 grid gap-5 lg:grid-cols-[1.22fr_0.78fr]">
-          <NeedMatchingPanel onPostNeed={() => setReportOpen(true)} />
+          <NeedMatchingPanel category={needCategory} onCategoryChange={setNeedCategory} onPostNeed={() => setReportOpen(true)} />
 
           <div className={cn("rounded-[28px] border p-6 sm:p-7", amberAlert ? "border-[#f8bd61]/40 bg-[#2a1d0f]" : "border-white/10 bg-[#101b29]") }>
             <div className="flex items-center justify-between gap-4">

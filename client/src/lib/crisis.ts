@@ -171,6 +171,28 @@ export function filterResponseNeeds(needs: ResponseNeed[], category: ResponseCat
   return category === "All" ? needs : needs.filter(need => need.category === category);
 }
 
+/**
+ * Return incident IDs directly from the response needs selected by the category filter.
+ * This keeps the map and matching cards in exact agreement, including zero-pin states.
+ */
+export function incidentIdsForCategory(
+  incidents: CrisisIncident[],
+  category: ResponseCategoryFilter,
+): Set<string> {
+  if (category === "All") return new Set(incidents.map(incident => incident.id));
+  const validIncidentIds = new Set(incidents.map(incident => incident.id));
+  return new Set(
+    RESPONSE_NEEDS
+      .filter(need => need.category === category && validIncidentIds.has(need.incidentId))
+      .map(need => need.incidentId),
+  );
+}
+
+/** Build a concise, platform-neutral share message for a single response need. */
+export function buildShareMessage(need: ResponseNeed): string {
+  return `🚨 Urgent need: ${need.title} (${need.quantity}) · ${need.location} · Category: ${need.category} · Disaster Needs Live`;
+}
+
 export function nextNeedStatus(status: NeedStatus): NeedStatus {
   if (status === "posted") return "in_progress";
   if (status === "in_progress") return "fulfilled";

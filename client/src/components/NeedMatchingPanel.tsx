@@ -8,6 +8,7 @@ import {
   HeartHandshake,
   PackageCheck,
   Radio,
+  Share2,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +18,9 @@ import {
   type NeedStatus,
   type ResponseCategoryFilter,
   filterResponseNeeds,
+  buildShareMessage,
   nextNeedStatus,
+  type ResponseNeed,
 } from "@/lib/crisis";
 
 const statusMeta: Record<NeedStatus, { label: string; detail: string; icon: typeof CircleDashed; className: string }> = {
@@ -41,8 +44,13 @@ const statusMeta: Record<NeedStatus, { label: string; detail: string; icon: type
   },
 };
 
-export function NeedMatchingPanel({ onPostNeed }: { onPostNeed: () => void }) {
-  const [category, setCategory] = useState<ResponseCategoryFilter>("All");
+type NeedMatchingPanelProps = {
+  category: ResponseCategoryFilter;
+  onCategoryChange: (category: ResponseCategoryFilter) => void;
+  onPostNeed: () => void;
+};
+
+export function NeedMatchingPanel({ category, onCategoryChange, onPostNeed }: NeedMatchingPanelProps) {
   const [statuses, setStatuses] = useState<Record<string, NeedStatus>>(() =>
     Object.fromEntries(RESPONSE_NEEDS.map(need => [need.id, need.status]))
   );
@@ -60,6 +68,28 @@ export function NeedMatchingPanel({ onPostNeed }: { onPostNeed: () => void }) {
     toast.success(next === "in_progress" ? "Response is now in progress" : "Request marked fulfilled", {
       description: "The status indicator updated immediately across this matching panel.",
     });
+  };
+
+  const shareNeed = async (need: ResponseNeed) => {
+    const text = buildShareMessage(need);
+    const url = `${window.location.origin}${window.location.pathname}#need-${need.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Urgent need: ${need.title}`, text, url });
+        toast.success("Share sheet opened", { description: "Choose a messaging or social platform to broadcast this request." });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        toast.success("Request copied", { description: "Paste the prepared message into your preferred messaging or social platform." });
+        return;
+      }
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${text}\n${url}`)}`, "_blank", "noopener,noreferrer");
+      toast.success("Share draft opened", { description: "A social share draft has opened in a new tab." });
+    } catch (error) {
+      if ((error as DOMException).name === "AbortError") return;
+      toast.error("Could not open sharing", { description: "Copy the request details manually from this card." });
+    }
   };
 
   return (
@@ -81,7 +111,7 @@ export function NeedMatchingPanel({ onPostNeed }: { onPostNeed: () => void }) {
             key={option}
             type="button"
             aria-pressed={category === option}
-            onClick={() => setCategory(option)}
+            onClick={() => onCategoryChange(option)}
             className={cn(
               "rounded-full px-3 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ring-1 transition-colors",
               category === option ? "bg-[#7bf1c9] text-[#07111e] ring-[#7bf1c9]" : "bg-white/[0.035] text-slate-400 ring-white/10 hover:bg-white/[0.08] hover:text-slate-200"
@@ -98,7 +128,7 @@ export function NeedMatchingPanel({ onPostNeed }: { onPostNeed: () => void }) {
             <CircleDashed className="mx-auto size-5 text-slate-500" />
             <p className="mt-3 text-sm font-semibold text-slate-200">No {category.toLowerCase()} requests are open right now.</p>
             <p className="mt-1 text-xs leading-5 text-slate-500">Clear the filter to review every active response need, or post a verified request for this category.</p>
-            <button type="button" onClick={() => setCategory("All")} className="mt-4 text-xs font-semibold text-[#a9f8dc] transition-colors hover:text-white">Show all active needs</button>
+            <button type="button" onClick={() => onCategoryChange("All")} className="mt-4 text-xs font-semibold text-[#a9f8dc] transition-colors hover:text-white">Show all active needs</button>
           </div>
         ) : matchingNeeds.map(need => {
           const status = statuses[need.id] ?? need.status;
@@ -106,14 +136,19 @@ export function NeedMatchingPanel({ onPostNeed }: { onPostNeed: () => void }) {
           const StatusIcon = meta.icon;
           const actionLabel = status === "posted" ? "Claim / respond" : status === "in_progress" ? "Mark fulfilled" : "Fulfilled";
           return (
-            <article key={need.id} className="group rounded-2xl border border-white/[0.08] bg-[#07131f]/75 p-4 transition-colors hover:border-white/[0.15]">
+            <article id={`need-${need.id}`} key={need.id} className="group rounded-2xl border border-white/[0.08] bg-[#07131f]/75 p-4 transition-colors hover:border-white/[0.15]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-[#f8bd61]">{need.category} · {need.quantity}</p>
                   <h3 className="mt-1.5 truncate text-sm font-bold tracking-[-0.02em] text-white">{need.title}</h3>
                   <p className="mt-1 text-[11px] text-slate-500">{need.location}</p>
                 </div>
-                <PackageCheck className="mt-1 size-4 shrink-0 text-[#7bf1c9]/70" />
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => shareNeed(need)} className="grid size-7 place-items-center rounded-lg bg-white/[0.05] text-slate-300 transition-colors hover:bg-[#7bf1c9] hover:text-[#07111e]" aria-label={`Share urgent request for ${need.title}`} title="Share request">
+                    <Share2 className="size-3.5" />
+                  </button>
+                  <PackageCheck className="size-4 shrink-0 text-[#7bf1c9]/70" />
+                </div>
               </div>
               <p className="mt-3 min-h-10 text-[11px] leading-5 text-slate-400">{need.detail}</p>
               <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
